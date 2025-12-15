@@ -4,13 +4,11 @@ import numpy as np
 
 def generate_catalogs(size=100, boxsize=(1000.,) * 3, boxcenter=(1000.,) * 3, n_individual_weights=1, n_bitwise_weights=0, seed=42):
     rng = np.random.RandomState(seed=seed)
-    toret = []
-    for i in range(2):
-        positions = [c + rng.uniform(-0.5, 0.5, size) * s for c, s in zip(boxcenter, boxsize)]
-        weights = [rng.randint(0, 0xffffffff, size, dtype='i8') for i in range(n_bitwise_weights)]
-        weights += [rng.uniform(0.5, 1., size) for i in range(n_individual_weights)]
-        toret.append(positions + weights)
-    return toret
+    positions = np.column_stack([c + rng.uniform(-0.5, 0.5, size) * s for c, s in zip(boxcenter, boxsize)])
+    weights = [rng.randint(0, 0xffffffff, size, dtype='i8') for i in range(n_bitwise_weights)]
+    weights += [rng.uniform(0.5, 1., size) for i in range(n_individual_weights)]
+    if len(weights) == 1: weights = weights[0]
+    return positions, weights
 
 
 def test_cosmoprimo():
@@ -24,34 +22,115 @@ def test_cosmoprimo():
 
 def test_pycorr():
 
-    data, randoms = generate_catalogs()
+    data_positions, data_weights = generate_catalogs()
+    randoms_positions, randoms_weights = generate_catalogs()
 
     from pycorr import TwoPointCorrelationFunction
-    TwoPointCorrelationFunction(mode='smu', edges=(np.linspace(0., 50., 51), np.linspace(-1., 1., 51)), data_positions1=data[:3],
-                                randoms_positions1=randoms[:3], data_weights1=data[3:], randoms_weights1=randoms[3:], nthreads=1)
-    TwoPointCorrelationFunction(mode='smu', edges=(np.linspace(0., 50., 51), np.linspace(-1., 1., 51)), data_positions1=data[:3],
-                                randoms_positions1=randoms[:3], data_weights1=data[3:], randoms_weights1=randoms[3:], nthreads=1, gpu=True)
+    TwoPointCorrelationFunction(mode='smu', edges=(np.linspace(0., 50., 51), np.linspace(-1., 1., 51)), data_positions1=data_positions, data_weights1=data_weights, randoms_positions1=randoms_positions, randoms_weights1=randoms_weights, position_type='pos', nthreads=1)
+    TwoPointCorrelationFunction(mode='smu', edges=(np.linspace(0., 50., 51), np.linspace(-1., 1., 51)), data_positions1=data_positions, data_weights1=data_weights, randoms_positions1=randoms_positions, randoms_weights1=randoms_weights, position_type='pos', nthreads=1, gpu=True)
+    TwoPointCorrelationFunction(mode='smu', edges=(np.linspace(0., 50., 51), np.linspace(-1., 1., 51)), data_positions1=data_positions, data_weights1=data_weights, randoms_positions1=randoms_positions, randoms_weights1=randoms_weights, position_type='pos', nthreads=1, engine='cucount')
 
 
 def test_pypower():
-
     from pypower import CatalogFFTPower
-    data, randoms = generate_catalogs(size=10000)
-    CatalogFFTPower(edges={'step': 0.01}, data_positions1=data[:3], randoms_positions1=randoms[:3], data_weights1=data[3:], randoms_weights1=randoms[3:], nmesh=64)
+    size = 10000
+    data_positions, data_weights = generate_catalogs(size=size)
+    randoms_positions, randoms_weights = generate_catalogs(size=size)
+    CatalogFFTPower(edges={'step': 0.01}, data_positions1=data_positions, data_weights1=data_weights, randoms_positions1=randoms_positions, randoms_weights1=randoms_weights, position_type='pos', nmesh=64)
 
 
 def test_pyrecon():
-
-    data, randoms = generate_catalogs(size=10000)
+    size = 10000
+    data_positions, data_weights = generate_catalogs(size=size)
+    randoms_positions, randoms_weights = generate_catalogs(size=size)
     from pyrecon import MultiGridReconstruction
-    data_positions, data_weights = np.column_stack(data[:3]), data[3]
-    randoms_positions, randoms_weights = np.column_stack(randoms[:3]), randoms[3]
     recon = MultiGridReconstruction(f=0.8, bias=2.0, los=None, nmesh=32, boxsize=2000., boxcenter=1000.)
     recon.assign_data(data_positions, data_weights)
     recon.assign_randoms(randoms_positions, randoms_weights)
     recon.set_density_contrast()
     recon.run()
     data_positions_rec = recon.read_shifted_positions(data_positions)
+
+
+def test_cucount():
+    size = 10000
+    positions1, weights1 = generate_catalogs(size=size)
+    positions2, weights2 = generate_catalogs(size=size)
+
+    def run(**kwargs):
+        particles1 = Particles(positions1, weights1)
+        particles2 = Particles(positions2, weights2)
+        battrs = BinAttrs(s=np.linspace(1., 201, 201), mu=(np.linspace(-1., 1., 201), 'midpoint'))
+        return count2(particles1, particles2, battrs=battrs, **kwargs)
+
+    from cucount.numpy import count2, Particles, BinAttrs
+    counts = run(nthreads=2)
+
+    from jax import config
+    config.update("jax_enable_x64", True)  # Currently only double precision is supported
+    from cucount.jax import count2, Particles, BinAttrs
+    counts = run()
+
+
+def test_jaxpower():
+    import jax
+    from jaxpower import (
+        get_mesh_attrs,
+        compute_mesh2_spectrum,
+        ParticleField,
+        FKPField,
+        create_sharding_mesh,
+        BinMesh2SpectrumPoles,
+        compute_fkp2_normalization,
+        compute_fkp2_shotnoise
+    )
+
+    size = 10000
+    data_positions, data_weights = generate_catalogs(size=size)
+    randoms_positions, randoms_weights = generate_catalogs(size=size)
+
+    # Create MeshAttrs from positions (assumed already sharded across processes)
+    mattrs = get_mesh_attrs(data_positions, randoms_positions, boxpad=2., meshsize=128)
+    data = ParticleField(data_positions, data_weights, attrs=mattrs, exchange=True)
+    randoms = ParticleField(randoms_positions, randoms_weights, attrs=mattrs, exchange=True)
+    fkp = FKPField(data, randoms)
+    # Define k-bin edges and multipoles
+    bin = BinMesh2SpectrumPoles(mattrs, edges={'step': 0.001}, ells=(0, 2, 4))
+
+    # Compute normalization and shot noise terms
+    norm = compute_fkp2_normalization(fkp, bin=bin)
+    num_shotnoise = compute_fkp2_shotnoise(fkp, bin=bin)
+
+    # Paint FKP field to mesh
+    mesh = fkp.paint(resampler='tsc', interlacing=3, compensate=True, out='real')
+    del fkp  # cleanup
+
+    # JIT the power spectrum function
+    compute_mesh2_spectrum = jax.jit(compute_mesh2_spectrum, static_argnames=['los'])
+
+    # Compute P(k)
+    spectrum = compute_mesh2_spectrum(mesh, bin=bin, los='firstpoint')
+    spectrum = spectrum.clone(norm=norm, num_shotnoise=num_shotnoise)
+
+
+def test_jaxrecon():
+    size = 10000
+    data_positions, data_weights = generate_catalogs(size=size)
+    randoms_positions, randoms_weights = generate_catalogs(size=size)
+
+    import jax.numpy as jnp
+    from jaxpower import ParticleField, FKPField, get_mesh_attrs, create_sharding_mesh
+    from jaxrecon.zeldovich import IterativeFFTReconstruction
+
+    # Define FKP field = data - randoms
+    mattrs = get_mesh_attrs(data_positions, randoms_positions, boxpad=1.2, cellsize=10.)
+    data = ParticleField(data_positions, data_weights, attrs=mattrs, exchange=True, return_inverse=True)
+    randoms = ParticleField(randoms_positions, randoms_weights, attrs=mattrs, exchange=True, return_inverse=True)
+    fkp = FKPField(data, randoms)
+    recon = IterativeFFTReconstruction(fkp, growth_rate=0.8, bias=2.0, los=None, smoothing_radius=15., halo_add=0)
+    data_positions_rec = recon.read_shifted_positions(data.positions)
+    # RecSym = remove large scale RSD from randoms
+    randoms_positions_rec = recon.read_shifted_positions(randoms.positions)
 
 
 def test_abacusutils():
@@ -81,7 +160,7 @@ def test_desilike():
                                                          data={'ct0_2': 1., 'sn0': 1000.},
                                                          theory=theory)
     covariance = ObservablesCovarianceMatrix(observables=observable, footprints=BoxFootprint(volume=1e10, nbar=1e-2))
-    observable.init.update(covariance=covariance())
+    observable.init.update(covariance=covariance().value())
     likelihood = ObservablesGaussianLikelihood(observables=[observable])
     likelihood.params['LRG.loglikelihood'] = likelihood.params['LRG.logprior'] = {}
 
@@ -185,9 +264,11 @@ if __name__ == '__main__':
     test_pycorr()
     test_pypower()
     test_pyrecon()
+    test_cucount()
+    test_jaxpower()
+    test_jaxrecon()
     test_mockfactory()
     test_desilike()
     test_inference()
     test_abacusutils()
     test_desihub()
-    test_inference()

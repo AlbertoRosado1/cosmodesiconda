@@ -3,7 +3,7 @@
 # So copy the full CLASS folder to the environment
 mkdir -p $COSMODESICOSMO/common
 BASEDIR=$COSMODESICOSMO/common
-CLASS_VERSION=3.2.1
+CLASS_VERSION=3.3.4
 export CLASS_STD_DIR=$BASEDIR/class_public-$CLASS_VERSION
 rm -rf $CLASS_STD_DIR
 

@@ -7,13 +7,13 @@ echo condadir is $CONDADIR
 conda install --copy --yes -c conda-forge \
     future \
     'libblas=*=*mkl' \
-    'numpy<2.0.0,>=1.16' \
+    numpy \
     'scipy>=1.5.0' \
     matplotlib \
     cfitsio \
     fitsio \
     h5py \
-    'cython=0.29' \
+    cython \
     pyfftw \
     sympy \
     numexpr \

@@ -2,12 +2,13 @@
 echo Installing pip packages at $(date)
 
 PYTHON=$(which python)
+$PYTHON -m pip install hdf5plugin
 $PYTHON -m pip install 'ipywidgets==8.0.4'
 # see https://docs.nersc.gov/development/languages/python/parallel-python/
 # also https://docs.nersc.gov/development/languages/python/using-python-perlmutter/
 MPICC=$MPICC $PYTHON -m pip install --force --no-cache-dir --no-binary=mpi4py mpi4py
-MPICC="" $PYTHON -m pip install --no-cache-dir git+https://github.com/MP-Gadget/pfft-python
-MPICC="" $PYTHON -m pip install --no-cache-dir git+https://github.com/MP-Gadget/pmesh
+MPICC=$MPICCPFFT $PYTHON -m pip install --no-cache-dir git+https://github.com/MP-Gadget/pfft-python
+MPICC=$MPICCPFFT $PYTHON -m pip install --no-cache-dir git+https://github.com/MP-Gadget/pmesh
 $PYTHON -m pip install --no-cache-dir git+https://github.com/adematti/getdist
 # install healpy with pip, as sometimes conda yields WARNING: version mismatch between CFITSIO header (as it reinstalls cfitsio)
 $PYTHON -m pip install --no-cache-dir --no-deps healpy camb isitgr emcee dynesty zeus-mcmc schwimmbad dill corner iminuit Py-BOBYQA bigfile hankl chainconsumer pydantic  # pydantic for chainconsumer
@@ -19,7 +20,8 @@ $PYTHON -m pip install parallel_numpy_rng
 # ML
 #$PYTHON pip install torch==2.1.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
 #$PYTHON -m pip install tensorflow==2.15.0
-$PYTHON -m pip install --upgrade "jax[cuda12]==0.5.3"
+#$PYTHON -m pip install --upgrade "jax[cuda12]==0.5.3"
+$PYTHON -m pip install --upgrade "jax[cuda12]"
 $PYTHON -m pip install "tensorflow==2.18.0" gast
 $PYTHON -m pip install "torch==2.6.0" pytorch-lightning
 $PYTHON -m pip install flax

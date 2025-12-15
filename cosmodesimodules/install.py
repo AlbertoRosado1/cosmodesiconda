@@ -475,7 +475,7 @@ class DesiInstall(object):
                                  stdout=PIPE, stderr=PIPE)
                     out, err = proc.communicate()
                 self.log.debug(out)
-                if len(err) > 0:
+                if len(err) > 0 and "detached HEAD" not in err:  # e.g., git checkout tag
                     message = ("git error while downloading product code: " +
                                err)
                     self.log.critical(message)
