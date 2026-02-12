@@ -13,7 +13,7 @@ export COSMOINSTALL="pip-pkgs.sh camb-pkgs.sh classy-pkgs.sh planck-pkgs.sh ners
 # craype-hugepages2M https://docs.nersc.gov/development/languages/python/faq-troubleshooting
 export UNLOADMODULES=""
 #export LOADMODULES="cudatoolkit/12.2 cudnn/8.9.3_cuda12 nccl/2.17.1-ofi cray-hdf5"
-export LOADMODULES="gcc-native/13.2 cray-hdf5-parallel cudatoolkit craype-accel-nvidia80 cray-mpich"
+export LOADMODULES="gcc-native/13.2 cray-hdf5-parallel cudatoolkit/12.9 craype-accel-nvidia80 cray-mpich"
 export HOSTVARIABLE=NERSC_HOST
 
 export CC="gcc"
@@ -31,10 +31,11 @@ if [ "${NERSC_HOST}" == "cori" ] ; then
 elif [ "${NERSC_HOST}" == "perlmutter" ] ; then
   # See https://docs.nersc.gov/development/languages/python/using-python-perlmutter
   export LOADMODULES="${LOADMODULES} texlive"
-  export ENVVARIABLES="MPI4PY_RC_RECV_MPROBE FALSE MPICH_GPU_SUPPORT_ENABLED FALSE CXI_FORK_SAFE 1 CXI_FORK_SAFE_HP 1 HDF5_USE_FILE_LOCKING FALSE"
+  # See https://github.com/jax-ml/jax/issues/29031
+  export ENVVARIABLES='MPI4PY_RC_RECV_MPROBE FALSE MPICH_GPU_SUPPORT_ENABLED FALSE CXI_FORK_SAFE 1 CXI_FORK_SAFE_HP 1 HDF5_USE_FILE_LOCKING FALSE XLA_FLAGS "--xla_gpu_enable_cublaslt=true --xla_gpu_cublas_fallback=true --xla_gpu_enable_command_buffer="'
   export MPICC="cc -shared"
 fi
 export MPICCPFFT="mpicc"
 export ENVVARIABLES="${ENVVARIABLES} TF_CPP_MIN_LOG_LEVEL 2"
-export ENVVARIABLES_LOGIN="JAX_PLATFORMS """
+export ENVVARIABLES_LOGIN="JAX_PLATFORMS cpu"
 export ENVVARIABLES_NODES="JAX_PLATFORMS """

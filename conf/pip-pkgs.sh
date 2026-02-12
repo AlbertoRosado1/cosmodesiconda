@@ -14,8 +14,9 @@ $PYTHON -m pip install 'ipywidgets==8.0.4'
 $PYTHON -m pip install --no-cache-dir getdist
 # install healpy with pip, as sometimes conda yields WARNING: version mismatch between CFITSIO header (as it reinstalls cfitsio)
 $PYTHON -m pip install --no-cache-dir --no-deps healpy camb isitgr emcee dynesty zeus-mcmc schwimmbad dill corner iminuit Py-BOBYQA bigfile hankl chainconsumer pydantic  # pydantic for chainconsumer
+$PYTHON -m pip install --no-cache-dir pocomc
 $PYTHON -m pip install --no-cache-dir --no-deps git+https://github.com/adematti/MGCAMB
-$PYTHON -m pip install --no-cache-dir --no-deps git+https://github.com/minaskar/pocomc.git
+#$PYTHON -m pip install --no-cache-dir --no-deps git+https://github.com/minaskar/pocomc.git
 # for abacusutils
 $PYTHON -m pip install --no-cache-dir 'blosc>=1.9.2' # for some reason, ImportError when conda install
 $PYTHON -m pip install parallel_numpy_rng
@@ -23,9 +24,14 @@ $PYTHON -m pip install parallel_numpy_rng
 #$PYTHON pip install torch==2.1.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
 #$PYTHON -m pip install tensorflow==2.15.0
 #$PYTHON -m pip install --upgrade "jax[cuda12]==0.5.3"
+#$PYTHON -m pip install --upgrade "jax[cuda12]"
+#$PYTHON -m pip install "tensorflow==2.18.0" gast
+#$PYTHON -m pip install "torch==2.6.0" pytorch-lightning
+
 $PYTHON -m pip install --upgrade "jax[cuda12]"
-$PYTHON -m pip install "tensorflow==2.18.0" gast
-$PYTHON -m pip install "torch==2.6.0" pytorch-lightning
+$PYTHON -m pip install torch torchvision torchaudio pytorch-lightning --index-url https://download.pytorch.org/whl/cu129
+$PYTHON -m pip install tensorflow gast
+
 $PYTHON -m pip install flax
 $PYTHON -m pip install --no-deps interpax equinox jaxtyping blackjax fastprogress jaxopt typeguard
 #$PYTHON -m pip install torch==2.0.1+cu117 torchvision==0.15.2+cu117 torchaudio==2.0.2 --index-url https://download.pytorch.org/whl/cu117
@@ -39,6 +45,8 @@ $PYTHON -m pip install SciencePlots
 $PYTHON -m pip install numpyro
 $PYTHON -m pip install diffrax distrax
 $PYTHON -m pip install jaxdecomp
+# For h5 with pandas
+$PYTHON -m pip install tables
 # Just for docs
 $PYTHON -m pip install sphinx sphinx-rtd-theme
 $PYTHON -m pip install ipympl

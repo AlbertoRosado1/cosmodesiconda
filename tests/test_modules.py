@@ -257,6 +257,11 @@ def test_desihub():
 
 
 if __name__ == '__main__':
+    import os
+    from jax import config
+    config.update('jax_enable_x64', True)
+    os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION'] = '0.2'
+
     from mockfactory import setup_logging
     setup_logging()
 
