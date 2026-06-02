@@ -30,4 +30,4 @@ desimodel @ https://github.com/desihub/desimodel @ branches/main
 desimeter @ https://github.com/desihub/desimeter @ branches/main
 fiberassign @ https://github.com/desihub/fiberassign @ branches/main
 #desi-y1-kp @ ../../desi-y1-kp
-#PolyBin3D @ https://github.com/AlbertoRosado1/PolyBin3D.git @ branches/main
+#PolyBin3D @ https://github.com/AlbertoRosado1/PolyBin3D @ branches/main
